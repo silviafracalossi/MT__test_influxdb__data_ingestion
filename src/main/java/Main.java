@@ -3,97 +3,269 @@ import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Pong;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Properties;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 // https://www.baeldung.com/java-influxdb
 public class Main {
 
-    static final String serverURL = "http://ironmaiden.inf.unibz.it:8086";
-    static final String localURL = "";
+    // Store users' configurations - default settings written here
+    static Scanner sc = new Scanner(System.in);
+    static int location_no=-1, insertion_no=-1, index_no=-1;
+    static int multiple_N_tuples = 5;
+    static boolean exec_om=false, exec_mixed=false;
+    static boolean useServerInfluxDB = false;
+    static String data_file_path = "data/TEMPERATURE_DATA.csv";
 
-    static final String username = "root";
-    static final String password = "root";
+    // Tests configurations
+    static String[] location_types = {"ironmaiden", "ironlady", "pc"};
+    static String[] insertion_types = {"one", "multiple", "mixed"};
+    static String[] index_types = {"no", "timestamp", "timestamp_and_value"};
 
-    static final String dbName = "test_db";
+    // Logger names date formatter
+    static String logs_path = "logs/";
+    static SimpleDateFormat simpleDateFormat = new SimpleDateFormat(
+            "YYYY-MM-dd__HH.mm.ss");
 
-    static InfluxDB influxDB = null;
-
+    // Creating the database interactor
+    static DatabaseInteractions dbi;
 
     public static void main(String[] args) throws IOException {
 
-        // Connecting to the DB
-        influxDB = InfluxDBFactory.connect(serverURL, username, password);
+        try {
 
-        // Pinging the DB
-        Pong response = influxDB.ping();
-        if (response.getVersion().equalsIgnoreCase("unknown")) {
-            System.out.println("Error pinging server");
-            return;
+            // Getting configurations from user
+            talkToUser();
+
+            // Instantiate general logger
+            Logger general_logger = instantiateLogger("general");
+            general_logger.info("Location: " +location_types[location_no]);
+
+            // Loading the credentials to the new influxdb database
+            general_logger.info("Instantiating database interactor");
+            dbi = new DatabaseInteractions(multiple_N_tuples, data_file_path, useServerInfluxDB);
+
+            // Marking start of tests
+            general_logger.info("Executing tests from " +location_types[location_no]);
+            general_logger.info("---Start of Tests!---");
+
+            // Iterating through the tests to be done
+            for (insertion_no=0; insertion_no<3; insertion_no++) {
+                for (index_no=0; index_no<3; index_no++) {
+
+                    // Checking if this test is required by the user at the beginning
+                    if ((insertion_no!=2 && exec_om) || (insertion_no==2 && exec_mixed)) {
+
+                        // Printing out the test configuration and creating logger
+                        String test_configuration = ""+(location_no+1)+(insertion_no+1)+(index_no+1);
+                        Logger test_logger = instantiateLogger("test_" + test_configuration);
+                        test_logger.info("Test #" + test_configuration
+                                +": from machine \"" +location_types[location_no]+ "\","
+                                +" having \"" +insertion_types[insertion_no]+ "\" insertions at a time"
+                                +" and \""+index_types[index_no]+"\" index set.");
+
+                        // Opening a connection to the postgreSQL database
+                        test_logger.info("Connecting to the PostgreSQL database...");
+                        dbi.createDBConnection();
+                        dbi.createDatabase();
+
+                        // Applying the specified index - TODO: set index
+                        //test_logger.info("Setting index...");
+                        //Index index = new Index(pos_conn, pos_stmt, index_no);
+                        //test_logger.info(index.applyIndex());
+
+                        // Checking whether concurrent queries are running
+                        String response = "";
+                        if (insertion_no == 2) {
+                            while (response.compareTo("y") != 0) {
+                                test_logger.info("Asking to start the concurrent queries");
+                                System.out.print("Are you at the \"Ready Statement\" on the other script? (y) ");
+                                response = sc.nextLine();
+                            }
+                            test_logger.info("Concurrent queries started");
+                        }
+
+                        // ==START OF TEST==
+                        System.out.println(test_configuration);
+                        dbi.insertTuples(insertion_no, test_logger);
+
+                        // ==END OF TEST==
+                        test_logger.info("--End of test #"+test_configuration+"--");
+
+                        // Checking whether concurrent queries are running
+                        if (insertion_no == 2) {
+                            response = "";
+                            while (response.compareTo("y") != 0) {
+                                test_logger.info("Asking to stop the concurrent queries");
+                                System.out.print("Did you STOP the concurrent queries? (y) ");
+                                response = sc.nextLine();
+                            }
+                            test_logger.info("Concurrent queries stopped");
+                        }
+
+                        // Clean database and close connections
+                        endOfTest();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            dbi.closeDBConnection();
+        }
+    }
+
+    //-----------------------UTILITY----------------------------------------------
+
+    // Interactions with the user to understand his/her preferences
+    public static void talkToUser () throws Exception {
+
+//        System.out.println("4 questions for you!");
+//        String response = "";
+//        boolean correct_answer = false;
+//
+//        // Understanding where the script is executed
+//        response = "";
+//        while (location_no == -1) {
+//            System.out.print("1. From which machine are you executing this script?"+
+//                    " (Type \"ironmaiden\", \"ironlady\" or \"pc\"): ");
+//            response = sc.nextLine();
+//            location_no = returnStringIndex(location_types, response);
+//        }
+//
+//        // Understanding what the user wants to be executed
+//        response = "";
+//        correct_answer = false;
+//        while (!correct_answer) {
+//            System.out.print("2. What do you want to execute?"
+//                    +" (Type \"1\" for all 9 tests,"
+//                    +" type \"2\" for One and Multiple tuples only,"
+//                    +" type \"3\" for Mixed Workload only): ");
+//            response = sc.nextLine().replace(" ", "");
+//
+//            // Understanding what the user wants
+//            if (response.compareTo("1") == 0) {
+//                exec_om=true;
+//                exec_mixed=true;
+//                correct_answer=true;
+//            }
+//            if (response.compareTo("2") == 0) {
+//                exec_om=true;
+//                correct_answer=true;
+//            }
+//            if (response.compareTo("3") == 0) {
+//                exec_mixed=true;
+//                correct_answer=true;
+//            }
+//        }
+//
+//        // Understanding whether the user wants the sever db or the local db
+//        response = "";
+//        correct_answer = false;
+//        while (!correct_answer) {
+//            System.out.print("3. Where do you want it to be executed?"
+//                    +" (Type \"s\" for server database,"
+//                    +" type \"l\" for local database)"
+//                    +" (usually, \"l\" is for script test purposes only): ");
+//            response = sc.nextLine().replace(" ", "");
+//
+//            // Understanding what the user wants
+//            if (response.compareTo("l") == 0 || response.compareTo("s") == 0) {
+//                correct_answer=true;
+//                if (response.compareTo("l") == 0) {
+//                    useServerInfluxDB = false;
+//                }
+//            }
+//        }
+//
+//        // Understanding which file to run
+//        response = "";
+//        correct_answer = false;
+//        while (!correct_answer) {
+//            System.out.print("4. Finally, inside the data folder, what is the name" +
+//                    " of the file containing the data to be inserted? ");
+//            response = sc.nextLine().replace(" ", "");
+//
+//            // Checking if it is a file
+//            File f = new File("data/"+response);
+//            if(f.exists() && !f.isDirectory()) {
+//                data_file_path = "data/"+response;
+//                correct_answer = true;
+//            }
+//        }
+//
+//        System.out.println("We are ready to start, thank you!");
+
+        location_no=2;
+        exec_om=true;
+        exec_mixed=true;
+        data_file_path = "data/TEMPERATURE_ns.csv";
+    }
+
+    // Instantiating the logger for the general information or errors
+    public static Logger instantiateLogger (String file_name) throws IOException {
+
+        // Retrieving and formatting current timestamp
+        Date date = new Date();
+        Timestamp now = new Timestamp(date.getTime());
+        String dateAsString = simpleDateFormat.format(now);
+
+        // Setting the name of the folder
+        if (file_name.compareTo("general") == 0) {
+            file_name += (location_no+1);
+            logs_path += dateAsString+"__"+(location_no+1)+"/";
+            File file = new File(logs_path);
+            boolean bool = file.mkdirs();
         }
 
-        // Creating database
-        influxDB.deleteDatabase(dbName);
-        influxDB.createDatabase(dbName);
+        // Instantiating general logger
+        String log_complete_path = logs_path + dateAsString + "__" + file_name
+                + "__influxdb_data_ingestion.xml";
+        Logger logger = Logger.getLogger("InfluxDBDataIngestionGeneralLog_"+file_name);
+        logger.setLevel(Level.ALL);
 
-        // Create and set a retention policy
-        influxDB.createRetentionPolicy("defaultPolicy", dbName, "30d", 1, true);
-        influxDB.setRetentionPolicy("defaultPolicy");
+        // Loading properties of log file
+        Properties preferences = new Properties();
+        try {
+            FileInputStream configFile = new FileInputStream("resources/logging.properties");
+            preferences.load(configFile);
+            LogManager.getLogManager().readConfiguration(configFile);
+        } catch (IOException ex) {
+            System.out.println("[WARN] Could not load configuration file");
+        }
 
-        // Inserting data
-        insertOnePoint();
-        insertTwoPoints();
+        // Instantiating file handler
+        FileHandler gl_fh = new FileHandler(log_complete_path);
+        logger.addHandler(gl_fh);
 
-        // Enable Batch?
-        // influxDB.enableBatch(5, 100000000, TimeUnit.MILLISECONDS);
-        // influxDB.disableBatch();
-
-        // Method Concluded
-        influxDB.close();
-        System.out.println("Finished.");
+        // Returning the logger
+        return logger;
     }
 
-    // Inserting multiple points at a time
-    public static void insertTwoPoints() {
-        System.out.println("Insert two points method");
-        BatchPoints batchPoints = BatchPoints
-                .database(dbName)
-                .retentionPolicy("defaultPolicy")
-                .build();
-
-        Point point1 = Point.measurement("memory")
-                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .addField("name", "point_21")
-                .addField("free", 4743656L)
-                .addField("used", 1015096L)
-                .addField("buffer", 1010467L)
-                .build();
-
-        Point point2 = Point.measurement("memory")
-                .time(System.currentTimeMillis() - 100, TimeUnit.MILLISECONDS)
-                .addField("name", "point_22")
-                .addField("free", 4743696L)
-                .addField("used", 1016096L)
-                .addField("buffer", 1008467L)
-                .build();
-
-        batchPoints.point(point1);
-        batchPoints.point(point2);
-        influxDB.write(batchPoints);
+    // Returns the index_no of the specified string in the string array
+    public static int returnStringIndex(String[] list, String keyword) {
+        for (int i=0; i<list.length; i++) {
+            if (list[i].compareTo(keyword) == 0) {
+                return i;
+            }
+        }
+        return -1;
     }
 
-    // Inserting one point
-    public static void insertOnePoint () {
-        System.out.println("Insert one point method");
-
-        Point point = Point.measurement("memory")
-                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .addField("name", "point_11")
-                .addField("free", 4743656L)
-                .addField("used", 1015096L)
-                .addField("buffer", 1010467L)
-                .build();
-        influxDB.write(dbName, "defaultPolicy", point);
+    // Cleans the database and closes all the connections to it
+    public static void endOfTest() {
+        dbi.closeDBConnection();
     }
 }
