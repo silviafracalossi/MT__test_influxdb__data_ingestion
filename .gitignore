@@ -5,3 +5,6 @@ connessione_influxdb.iml
 data/*
 resources/*
 desktop.ini
+
+src/main/java/*/*
+logs/*
