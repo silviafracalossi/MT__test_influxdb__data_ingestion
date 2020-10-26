@@ -1,0 +1,7 @@
+.idea/*
+src/main/resources/*
+target/*
+connessione_influxdb.iml
+data/*
+resources/*
+desktop.ini
