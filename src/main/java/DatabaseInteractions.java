@@ -51,8 +51,9 @@ public class DatabaseInteractions {
 
   // Method called from for-loop in main, choosing correct method for insertion
   public void insertTuples (int insertion_no, Logger logger) {
-    if (insertion_no==1)   insertMultipleTuples(logger);
-    else                   insertOneTuple(logger);
+    if (insertion_no==1)          insertMultipleTuples(logger);
+    else if (insertion_no==3)     insertOneBatchTuple(logger);
+    else                          insertOneTuple(logger);
   }
 
 
@@ -97,34 +98,6 @@ public class DatabaseInteractions {
     logger.info("Total rows inserted: "+rows_inserted);
   }
 
-  // Inserting multiple points at a time
-//  public static void insertTwoPoints() {
-//    System.out.println("Insert two points method");
-//    BatchPoints batchPoints = BatchPoints
-//            .database(dbName)
-//            .retentionPolicy(retention_policy_name)
-//            .build();
-//
-//    Point point1 = Point.measurement("memory")
-//            .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-//            .addField("name", "point_21")
-//            .addField("free", 4743656L)
-//            .addField("used", 1015096L)
-//            .addField("buffer", 1010467L)
-//            .build();
-//
-//    Point point2 = Point.measurement("memory")
-//            .time(System.currentTimeMillis() - 100, TimeUnit.MILLISECONDS)
-//            .addField("name", "point_22")
-//            .addField("free", 4743696L)
-//            .addField("used", 1016096L)
-//            .addField("buffer", 1008467L)
-//            .build();
-//
-//    batchPoints.point(point1);
-//    batchPoints.point(point2);
-//    influxDB.write(batchPoints);
-//  }
 
   // Iterating through data, inserting it i at a time
   public void insertMultipleTuples(Logger logger) {
@@ -210,6 +183,58 @@ public class DatabaseInteractions {
       System.out.println("An error occurred.");
       e.printStackTrace();
       logger.severe("Insertion: \"Multiple tuples at a time\" - problems with the execution");
+    }
+
+    logger.info("Total rows inserted: "+rows_inserted);
+  }
+
+
+  // Iterating through data, inserting it i at a time
+  public void insertOneBatchTuple(Logger logger) {
+
+    // Defining variables useful for method
+    String[] fields;
+    int rows_inserted = 0;
+
+    try {
+      Scanner reader = new Scanner(new File(data_file_path));
+
+      // Signaling start of test
+      logger.info("--Start of test--");
+      BatchPoints batchPoints;
+      Point point;
+
+      while (reader.hasNextLine()) {
+
+        // Retrieving the data and preparing insertion script
+        fields = reader.nextLine().split(",");
+
+        // Creating point and writing the logger info in variable
+        point = Point.measurement("temperature")
+                .time(Long.parseLong(fields[0]), TimeUnit.NANOSECONDS)
+                .addField("value", Integer.parseInt(fields[1]))
+                .build();
+
+        // Preparing batch
+        batchPoints = BatchPoints
+                .database(dbName)
+                .retentionPolicy(retention_policy_name)
+                .build();
+        batchPoints.point(point);
+
+        // Writing batch
+        influxDB.write(batchPoints);
+        rows_inserted++;
+        logger.info("Query executed on (\"+fields[0]+\",\"+fields[1]+\")");
+      }
+
+      // Closing the file reader
+      reader.close();
+
+    } catch (FileNotFoundException e) {
+      System.out.println("An error occurred.");
+      e.printStackTrace();
+      logger.severe("Insertion: \"One Batch tuples at a time\" - problems with the execution");
     }
 
     logger.info("Total rows inserted: "+rows_inserted);

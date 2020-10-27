@@ -31,8 +31,8 @@ public class Main {
 
     // Tests configurations
     static String[] location_types = {"ironmaiden", "ironlady", "pc"};
-    static String[] insertion_types = {"one", "multiple", "mixed"};
-    static String[] index_types = {"no", "timestamp", "timestamp_and_value"};
+    static String[] insertion_types = {"one", "multiple", "mixed", "one_bucket"};
+    static String[] index_types = {"inmem", "tsi1"};
 
     // Logger names date formatter
     static String logs_path = "logs/";
@@ -62,62 +62,55 @@ public class Main {
             general_logger.info("---Start of Tests!---");
 
             // Iterating through the tests to be done
-            for (insertion_no=0; insertion_no<3; insertion_no++) {
-                for (index_no=0; index_no<3; index_no++) {
+            for (insertion_no=0; insertion_no<4; insertion_no++) {
 
-                    // Checking if this test is required by the user at the beginning
-                    if ((insertion_no!=2 && exec_om) || (insertion_no==2 && exec_mixed)) {
+                // Checking if this test is required by the user at the beginning
+                if ((insertion_no!=2 && exec_om) || (insertion_no==2 && exec_mixed)) {
 
-                        // Printing out the test configuration and creating logger
-                        String test_configuration = ""+(location_no+1)+(insertion_no+1)+(index_no+1);
-                        Logger test_logger = instantiateLogger("test_" + test_configuration);
-                        test_logger.info("Test #" + test_configuration
-                                +": from machine \"" +location_types[location_no]+ "\","
-                                +" having \"" +insertion_types[insertion_no]+ "\" insertions at a time"
-                                +" and \""+index_types[index_no]+"\" index set.");
+                    // Printing out the test configuration and creating logger
+                    String test_configuration = ""+(location_no+1)+(insertion_no+1)+(index_no+1);
+                    Logger test_logger = instantiateLogger("test_" + test_configuration);
+                    test_logger.info("Test #" + test_configuration
+                            +": from machine \"" +location_types[location_no]+ "\","
+                            +" having \"" +insertion_types[insertion_no]+ "\" insertions at a time"
+                            +" and \""+index_types[index_no]+"\" index set.");
 
-                        // Opening a connection to the postgreSQL database
-                        test_logger.info("Connecting to the PostgreSQL database...");
-                        dbi.createDBConnection();
-                        dbi.createDatabase();
+                    // Opening a connection to the postgreSQL database
+                    test_logger.info("Connecting to the PostgreSQL database...");
+                    dbi.createDBConnection();
+                    dbi.createDatabase();
 
-                        // Applying the specified index - TODO: set index
-                        //test_logger.info("Setting index...");
-                        //Index index = new Index(pos_conn, pos_stmt, index_no);
-                        //test_logger.info(index.applyIndex());
-
-                        // Checking whether concurrent queries are running
-                        String response = "";
-                        if (insertion_no == 2) {
-                            while (response.compareTo("y") != 0) {
-                                test_logger.info("Asking to start the concurrent queries");
-                                System.out.print("Are you at the \"Ready Statement\" on the other script? (y) ");
-                                response = sc.nextLine();
-                            }
-                            test_logger.info("Concurrent queries started");
+                    // Checking whether concurrent queries are running
+                    String response = "";
+                    if (insertion_no == 2) {
+                        while (response.compareTo("y") != 0) {
+                            test_logger.info("Asking to start the concurrent queries");
+                            System.out.print("Are you at the \"Ready Statement\" on the other script? (y) ");
+                            response = sc.nextLine();
                         }
-
-                        // ==START OF TEST==
-                        System.out.println(test_configuration);
-                        dbi.insertTuples(insertion_no, test_logger);
-
-                        // ==END OF TEST==
-                        test_logger.info("--End of test #"+test_configuration+"--");
-
-                        // Checking whether concurrent queries are running
-                        if (insertion_no == 2) {
-                            response = "";
-                            while (response.compareTo("y") != 0) {
-                                test_logger.info("Asking to stop the concurrent queries");
-                                System.out.print("Did you STOP the concurrent queries? (y) ");
-                                response = sc.nextLine();
-                            }
-                            test_logger.info("Concurrent queries stopped");
-                        }
-
-                        // Clean database and close connections
-                        endOfTest();
+                        test_logger.info("Concurrent queries started");
                     }
+
+                    // ==START OF TEST==
+                    System.out.println(test_configuration);
+                    dbi.insertTuples(insertion_no, test_logger);
+
+                    // ==END OF TEST==
+                    test_logger.info("--End of test #"+test_configuration+"--");
+
+                    // Checking whether concurrent queries are running
+                    if (insertion_no == 2) {
+                        response = "";
+                        while (response.compareTo("y") != 0) {
+                            test_logger.info("Asking to stop the concurrent queries");
+                            System.out.print("Did you STOP the concurrent queries? (y) ");
+                            response = sc.nextLine();
+                        }
+                        test_logger.info("Concurrent queries stopped");
+                    }
+
+                    // Clean database and close connections
+                    endOfTest();
                 }
             }
         } catch (Exception e) {
@@ -132,86 +125,101 @@ public class Main {
     // Interactions with the user to understand his/her preferences
     public static void talkToUser () throws Exception {
 
-//        System.out.println("4 questions for you!");
-//        String response = "";
-//        boolean correct_answer = false;
-//
-//        // Understanding where the script is executed
-//        response = "";
-//        while (location_no == -1) {
-//            System.out.print("1. From which machine are you executing this script?"+
-//                    " (Type \"ironmaiden\", \"ironlady\" or \"pc\"): ");
-//            response = sc.nextLine();
-//            location_no = returnStringIndex(location_types, response);
-//        }
-//
-//        // Understanding what the user wants to be executed
-//        response = "";
-//        correct_answer = false;
-//        while (!correct_answer) {
-//            System.out.print("2. What do you want to execute?"
-//                    +" (Type \"1\" for all 9 tests,"
-//                    +" type \"2\" for One and Multiple tuples only,"
-//                    +" type \"3\" for Mixed Workload only): ");
-//            response = sc.nextLine().replace(" ", "");
-//
-//            // Understanding what the user wants
-//            if (response.compareTo("1") == 0) {
-//                exec_om=true;
-//                exec_mixed=true;
-//                correct_answer=true;
-//            }
-//            if (response.compareTo("2") == 0) {
-//                exec_om=true;
-//                correct_answer=true;
-//            }
-//            if (response.compareTo("3") == 0) {
-//                exec_mixed=true;
-//                correct_answer=true;
-//            }
-//        }
-//
-//        // Understanding whether the user wants the sever db or the local db
-//        response = "";
-//        correct_answer = false;
-//        while (!correct_answer) {
-//            System.out.print("3. Where do you want it to be executed?"
-//                    +" (Type \"s\" for server database,"
-//                    +" type \"l\" for local database)"
-//                    +" (usually, \"l\" is for script test purposes only): ");
-//            response = sc.nextLine().replace(" ", "");
-//
-//            // Understanding what the user wants
-//            if (response.compareTo("l") == 0 || response.compareTo("s") == 0) {
-//                correct_answer=true;
-//                if (response.compareTo("l") == 0) {
-//                    useServerInfluxDB = false;
-//                }
-//            }
-//        }
-//
-//        // Understanding which file to run
-//        response = "";
-//        correct_answer = false;
-//        while (!correct_answer) {
-//            System.out.print("4. Finally, inside the data folder, what is the name" +
-//                    " of the file containing the data to be inserted? ");
-//            response = sc.nextLine().replace(" ", "");
-//
-//            // Checking if it is a file
-//            File f = new File("data/"+response);
-//            if(f.exists() && !f.isDirectory()) {
-//                data_file_path = "data/"+response;
-//                correct_answer = true;
-//            }
-//        }
-//
-//        System.out.println("We are ready to start, thank you!");
+        System.out.println("5 questions for you!");
+        String response = "";
+        String final_message = "";
+        boolean correct_answer = false;
 
-        location_no=2;
-        exec_om=true;
-        exec_mixed=true;
-        data_file_path = "data/TEMPERATURE_ns.csv";
+        // Understanding where the script is executed
+        response = "";
+        while (location_no == -1) {
+            System.out.print("1. From which machine are you executing this script?"+
+                    " (Type \"ironmaiden\", \"ironlady\" or \"pc\"): ");
+            response = sc.nextLine();
+            location_no = returnStringIndex(location_types, response);
+        }
+        final_message += "Executing from \""+location_types[location_no]+"\", ";
+
+        // Understanding whether the user wants the sever db or the local db
+        response = "";
+        correct_answer = false;
+        while (!correct_answer) {
+            System.out.print("2. Where do you want it to be executed?"
+                    +" (Type \"s\" for server database,"
+                    +" type \"l\" for local database): ");
+            response = sc.nextLine().replace(" ", "");
+
+            // Understanding what the user wants
+            if (response.compareTo("l") == 0 || response.compareTo("s") == 0) {
+                correct_answer=true;
+                if (response.compareTo("l") == 0) {
+                    useServerInfluxDB = false;
+                }
+            }
+        }
+        final_message += "using the database on \""+((useServerInfluxDB)?"server":"localhost")+"\", ";
+
+        // Understanding what the index configured
+        while (index_no == -1) {
+            System.out.print("3. What is the index configured right now?"
+                    +" (Type \"inmem\" or \"tsi1\"): ");
+            response = sc.nextLine().replace(" ", "");
+            index_no = returnStringIndex(index_types, response);
+        }
+        final_message += "with index \""+(index_types[index_no])+"\", ";
+
+        // Understanding what the user wants to be executed
+        response = "";
+        correct_answer = false;
+        while (!correct_answer) {
+            System.out.print("4. What do you want to execute?"
+                    +" (Type \"1\" for all 9 tests,"
+                    +" type \"2\" for One and Multiple tuples only,"
+                    +" type \"3\" for Mixed Workload only): ");
+            response = sc.nextLine().replace(" ", "");
+
+            // Understanding what the user wants
+            if (response.compareTo("1") == 0) {
+                exec_om=true;
+                exec_mixed=true;
+                correct_answer=true;
+                final_message += "testing \"all\" configurations, ";
+            }
+            if (response.compareTo("2") == 0) {
+                exec_om=true;
+                correct_answer=true;
+                final_message += "testing \"all but mixed\" configurations, ";
+            }
+            if (response.compareTo("3") == 0) {
+                exec_mixed=true;
+                correct_answer=true;
+                final_message += "testing \"only mixed\" configurations, ";
+            }
+        }
+
+
+        // Understanding which file to run
+        response = "";
+        correct_answer = false;
+        while (!correct_answer) {
+            System.out.print("5. Finally, inside the data folder, what is the " +
+                    "data file name? (\"d\" for default): ");
+            response = sc.nextLine().replace(" ", "");
+
+            if (response.compareTo("d")==0) {
+                response = "TEMPERATURE_ns.csv";
+            }
+
+            // Checking if it is a file
+            File f = new File("data/"+response);
+            if(f.exists() && !f.isDirectory()) {
+                data_file_path = "data/"+response;
+                correct_answer = true;
+            }
+        }
+
+        System.out.println(final_message+"getting data from \""+data_file_path+"\".");
+        System.out.println("We are ready to start, thank you!");
     }
 
     // Instantiating the logger for the general information or errors
