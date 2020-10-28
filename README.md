@@ -4,9 +4,9 @@ Tester of the InfluxDB ability of ingesting time series data
 
 ## Repository Structure
 -   `data/`, containing the printers parsed logs files in the format of CSV files;
--   `index/`, containing the bash code to switch the index type;
 -   `logs/`, containing the log information of all the tests done;
 -   `resources/`, containing the InfluxDB driver, the database credentials file and the logger properties;
+-   `scripts/`, containing the bash code to switch the index type and empty the memory;
 -   `src/main/java`, containing the java source files;
 -   `target/`, containing the generated .class files after compiling the java code.
 
