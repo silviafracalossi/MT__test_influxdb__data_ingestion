@@ -1,13 +1,8 @@
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
-import org.influxdb.dto.BatchPoints;
-import org.influxdb.dto.Point;
-import org.influxdb.dto.Pong;
-import org.influxdb.dto.Query;
+import org.influxdb.dto.*;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.sql.*;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
@@ -52,7 +47,6 @@ public class DatabaseInteractions {
   // Method called from for-loop in main, choosing correct method for insertion
   public void insertTuples (int insertion_no, Logger logger) {
     if (insertion_no==1)          insertMultipleTuples(logger);
-    else if (insertion_no==3)     insertOneBatchTuple(logger);
     else                          insertOneTuple(logger);
   }
 
@@ -188,58 +182,6 @@ public class DatabaseInteractions {
     logger.info("Total rows inserted: "+rows_inserted);
   }
 
-
-  // Iterating through data, inserting it i at a time
-  public void insertOneBatchTuple(Logger logger) {
-
-    // Defining variables useful for method
-    String[] fields;
-    int rows_inserted = 0;
-
-    try {
-      Scanner reader = new Scanner(new File(data_file_path));
-
-      // Signaling start of test
-      logger.info("--Start of test--");
-      BatchPoints batchPoints;
-      Point point;
-
-      while (reader.hasNextLine()) {
-
-        // Retrieving the data and preparing insertion script
-        fields = reader.nextLine().split(",");
-
-        // Creating point and writing the logger info in variable
-        point = Point.measurement("temperature")
-                .time(Long.parseLong(fields[0]), TimeUnit.NANOSECONDS)
-                .addField("value", Integer.parseInt(fields[1]))
-                .build();
-
-        // Preparing batch
-        batchPoints = BatchPoints
-                .database(dbName)
-                .retentionPolicy(retention_policy_name)
-                .build();
-        batchPoints.point(point);
-
-        // Writing batch
-        influxDB.write(batchPoints);
-        rows_inserted++;
-        logger.info("Query executed on (\"+fields[0]+\",\"+fields[1]+\")");
-      }
-
-      // Closing the file reader
-      reader.close();
-
-    } catch (FileNotFoundException e) {
-      System.out.println("An error occurred.");
-      e.printStackTrace();
-      logger.severe("Insertion: \"One Batch tuples at a time\" - problems with the execution");
-    }
-
-    logger.info("Total rows inserted: "+rows_inserted);
-  }
-
   //----------------------DATABASE UTILITY--------------------------------------
 
   // Connecting to the InfluxDB database
@@ -284,6 +226,5 @@ public class DatabaseInteractions {
     } catch (NullPointerException e) {
       System.out.println("Closing DB connection - NullPointerException");
     }
-
   }
 }

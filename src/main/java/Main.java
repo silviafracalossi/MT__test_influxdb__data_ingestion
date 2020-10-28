@@ -18,7 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-// https://www.baeldung.com/java-influxdb
+
 public class Main {
 
     // Store users' configurations - default settings written here
@@ -31,7 +31,7 @@ public class Main {
 
     // Tests configurations
     static String[] location_types = {"ironmaiden", "ironlady", "pc"};
-    static String[] insertion_types = {"one", "multiple", "mixed", "one_bucket"};
+    static String[] insertion_types = {"one", "multiple", "mixed"};
     static String[] index_types = {"inmem", "tsi1"};
 
     // Logger names date formatter
@@ -62,7 +62,7 @@ public class Main {
             general_logger.info("---Start of Tests!---");
 
             // Iterating through the tests to be done
-            for (insertion_no=0; insertion_no<4; insertion_no++) {
+            for (insertion_no=0; insertion_no<(insertion_types.length); insertion_no++) {
 
                 // Checking if this test is required by the user at the beginning
                 if ((insertion_no!=2 && exec_om) || (insertion_no==2 && exec_mixed)) {
@@ -173,7 +173,7 @@ public class Main {
         correct_answer = false;
         while (!correct_answer) {
             System.out.print("4. What do you want to execute?"
-                    +" (Type \"1\" for all 9 tests,"
+                    +" (Type \"1\" for all 3 tests,"
                     +" type \"2\" for One and Multiple tuples only,"
                     +" type \"3\" for Mixed Workload only): ");
             response = sc.nextLine().replace(" ", "");
@@ -196,7 +196,6 @@ public class Main {
                 final_message += "testing \"only mixed\" configurations, ";
             }
         }
-
 
         // Understanding which file to run
         response = "";
