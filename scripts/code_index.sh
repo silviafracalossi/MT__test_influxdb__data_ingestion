@@ -18,6 +18,6 @@ else
         sudo sed -i 's/index-version="tsi1"/index-version="inmem"/' influxdb.conf
         echo "Done!"
     else
-        echo "Wrong selection. Input \"tsi1\" or \"inmem\""
+        echo "Wrong selection: Input \"tsi1\" or \"inmem\""
     fi
 fi
