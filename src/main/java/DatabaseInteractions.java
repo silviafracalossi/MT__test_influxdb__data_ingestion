@@ -1,4 +1,5 @@
 import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBException;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.*;
 import java.io.File;
@@ -75,10 +76,16 @@ public class DatabaseInteractions {
                 .time(Long.parseLong(fields[0]), TimeUnit.NANOSECONDS)
                 .addField("value", Integer.parseInt(fields[1]))
                 .build();
-        influxDB.write(dbName, "testPolicy", point);
 
-        rows_inserted++;
-        logger.info("Query executed: ("+fields[0]+","+fields[1]+")\n");
+        // Inserting data + Catching exception in case of database not working
+        try {
+          influxDB.write(dbName, "testPolicy", point);
+          logger.info("Query executed: ("+fields[0]+","+fields[1]+")\n");
+          rows_inserted++;
+        } catch (InfluxDBException e) {
+          System.out.println("Problems with executing the query on the DB");
+          logger.severe("Problems with executing query: ("+fields[0]+","+fields[1]+")\n");
+        }
       }
 
       // Closing the file reader
@@ -89,7 +96,14 @@ public class DatabaseInteractions {
       e.printStackTrace();
       logger.severe("Insertion: \"1\" - problems with the execution");
     }
-    logger.info("Total rows inserted: "+rows_inserted);
+
+    // Checking the number of rows inserted
+    int rows_count = getRowsInDatabase();
+    if (rows_count == rows_inserted) {
+      logger.info("Total rows inserted: "+rows_inserted);
+    } else {
+      logger.severe("Supposed rows inserted: "+rows_inserted+" but found "+rows_count);
+    }
   }
 
 
@@ -134,18 +148,21 @@ public class DatabaseInteractions {
         // Executing the query and checking the result, if number of rows is enough
         if (no_rows_waiting == N) {
 
-          // Inserting data
-          influxDB.write(batchPoints);
+          // Inserting data + Catching exception in case of database not working
+          try {
+            influxDB.write(batchPoints);
+            logger.info("Query executed on "+logger_text);
+            rows_inserted += no_rows_waiting;
+          } catch (InfluxDBException e) {
+            System.out.println("Problems with executing the query on the DB");
+            logger.severe("Problems with executing query: "+logger_text+"\n");
+          }
 
-          // Updating variables
-          rows_inserted += N;
+          // Resetting variables for successive tuples
           batchPoints = BatchPoints
                   .database(dbName)
                   .retentionPolicy(retention_policy_name)
                   .build();
-          logger.info("Query executed on "+logger_text);
-
-          // Resetting variables for successive tuples
           logger_text = "";
           no_rows_waiting = 0;
         }
@@ -154,20 +171,15 @@ public class DatabaseInteractions {
       // In case some tuples need to be inserted
       if (no_rows_waiting != 0) {
 
-        // Inserting data
-        influxDB.write(batchPoints);
-
-        // Updating variables
-        rows_inserted += N;
-        batchPoints = BatchPoints
-                .database(dbName)
-                .retentionPolicy(retention_policy_name)
-                .build();
-        logger.info("Query executed on "+logger_text);
-
-        // Resetting variables for successive tuples
-        logger_text = "";
-        no_rows_waiting = 0;
+        // Inserting data + Catching exception in case of database not working
+        try {
+          influxDB.write(batchPoints);
+          logger.info("Query executed on "+logger_text);
+          rows_inserted += no_rows_waiting;
+        } catch (InfluxDBException e) {
+          System.out.println("Problems with executing the query on the DB");
+          logger.severe("Problems with executing query: "+logger_text+"\n");
+        }
       }
 
       // Closing the file reader
@@ -179,7 +191,13 @@ public class DatabaseInteractions {
       logger.severe("Insertion: \"Multiple tuples at a time\" - problems with the execution");
     }
 
-    logger.info("Total rows inserted: "+rows_inserted);
+    // Checking the number of rows inserted
+    int rows_count = getRowsInDatabase();
+    if (rows_count == rows_inserted) {
+      logger.info("Total rows inserted: "+rows_inserted);
+    } else {
+      logger.severe("Supposed rows inserted: "+rows_inserted+" but found "+rows_count);
+    }
   }
 
   //----------------------DATABASE UTILITY--------------------------------------
@@ -208,6 +226,18 @@ public class DatabaseInteractions {
             " DURATION "+duration+" REPLICATION "+replication+" DEFAULT";
     influxDB.query(new Query(query_string, dbName));
     influxDB.setRetentionPolicy("testPolicy");
+  }
+
+  // Get the number of rows present in the database
+  public static int getRowsInDatabase() {
+    QueryResult queryResult;
+    String count_query = "SELECT COUNT(*) FROM \"temperature\"";
+    queryResult = influxDB.query(new Query(count_query, dbName));
+
+    String count_in_string = (queryResult.getResults().get(0).getSeries()
+            .get(0).getValues().get(0).get(1)) + "";
+    int count = Integer.parseInt((count_in_string).substring(0, count_in_string.length() - 2));
+    return (count > -1) ? count : 0;
   }
 
   // Dropping the table "test_table" from the database

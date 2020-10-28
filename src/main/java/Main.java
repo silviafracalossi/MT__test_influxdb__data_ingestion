@@ -27,7 +27,8 @@ public class Main {
     static int multiple_N_tuples = 5;
     static boolean exec_om=false, exec_mixed=false;
     static boolean useServerInfluxDB = false;
-    static String data_file_path = "data/TEMPERATURE_DATA.csv";
+    static String data_file = "TEMPERATURE_nodup.csv";
+    static String data_file_path;
 
     // Tests configurations
     static String[] location_types = {"ironmaiden", "ironlady", "pc"};
@@ -200,17 +201,19 @@ public class Main {
         // Understanding which file to run
         response = "";
         correct_answer = false;
+        File f;
         while (!correct_answer) {
             System.out.print("5. Finally, inside the data folder, what is the " +
-                    "data file name? (\"d\" for default): ");
+                    "data file name? (\"d\" for \""+data_file+"\"): ");
             response = sc.nextLine().replace(" ", "");
 
+            // Defining the file specified by the user
             if (response.compareTo("d")==0) {
-                response = "TEMPERATURE_ns.csv";
+                response = data_file;
             }
 
             // Checking if it is a file
-            File f = new File("data/"+response);
+            f = new File("data/"+response);
             if(f.exists() && !f.isDirectory()) {
                 data_file_path = "data/"+response;
                 correct_answer = true;
