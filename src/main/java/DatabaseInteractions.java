@@ -4,7 +4,6 @@ import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.*;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.text.SimpleDateFormat;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -22,7 +21,7 @@ public class DatabaseInteractions {
   // Databases Username, Password and Database name
   static final String username = "root";
   static final String password = "root";
-  static final String dbName = "test_table";
+  static final String dbName = "test_table_i";
 
   // Retention policy definition
   static String retention_policy_name = "testPolicy";
@@ -31,9 +30,6 @@ public class DatabaseInteractions {
 
   // Group of tuples to be inserted
   static int N;
-
-  // Logger formatter
-  static SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
   // Location of file containing data
   String data_file_path;
@@ -47,8 +43,8 @@ public class DatabaseInteractions {
 
   // Method called from for-loop in main, choosing correct method for insertion
   public void insertTuples (int insertion_no, Logger logger) {
-    if (insertion_no==1)          insertMultipleTuples(logger);
-    else                          insertOneTuple(logger);
+    if (insertion_no==0)          insertOneTuple(logger);
+    else                          insertMultipleTuples(logger);
   }
 
 
@@ -142,7 +138,7 @@ public class DatabaseInteractions {
                 .addField("value", Integer.parseInt(fields[1]))
                 .build();
         batchPoints.point(point);
-        logger_text += "(\"+fields[0]+\",\"+fields[1]+\") ";
+        logger_text += "("+fields[0]+","+fields[1]+") ";
         no_rows_waiting++;
 
         // Executing the query and checking the result, if number of rows is enough

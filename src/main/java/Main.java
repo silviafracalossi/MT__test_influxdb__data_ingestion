@@ -1,18 +1,11 @@
-import org.influxdb.InfluxDB;
-import org.influxdb.InfluxDBFactory;
-import org.influxdb.dto.BatchPoints;
-import org.influxdb.dto.Point;
-import org.influxdb.dto.Pong;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -25,14 +18,13 @@ public class Main {
     static Scanner sc = new Scanner(System.in);
     static int location_no=-1, insertion_no=-1, index_no=-1;
     static int multiple_N_tuples = 5;
-    static boolean exec_om=false, exec_mixed=false;
     static boolean useServerInfluxDB = false;
     static String data_file = "TEMPERATURE_nodup.csv";
     static String data_file_path;
 
     // Tests configurations
     static String[] location_types = {"ironmaiden", "ironlady", "pc"};
-    static String[] insertion_types = {"one", "multiple", "mixed"};
+    static String[] insertion_types = {"one", "multiple"};
     static String[] index_types = {"inmem", "tsi1"};
 
     // Logger names date formatter
@@ -47,14 +39,30 @@ public class Main {
 
         try {
 
-            // Getting configurations from user
-            talkToUser();
+            // Getting information from user
+            if (args.length != 4) {
+                talkToUser();
+            } else {
+                location_no = returnStringIndex(location_types, args[0]);
+                useServerInfluxDB = (args[1].compareTo("s")==0);
+                index_no = returnStringIndex(index_types, args[2]);
+
+                // Checking if the default file is requested
+                if (args[3].compareTo("d")==0) {
+                    args[3] = data_file;
+                }
+                // Checking if it is a file
+                File f = new File("data/"+args[3]);
+                if(f.exists() && !f.isDirectory()) {
+                    data_file_path = "data/"+args[3];
+                }
+            }
 
             // Instantiate general logger
             Logger general_logger = instantiateLogger("general");
             general_logger.info("Location: " +location_types[location_no]);
 
-            // Loading the credentials to the new influxdb database
+            // Loading the credentials to the new database
             general_logger.info("Instantiating database interactor");
             dbi = new DatabaseInteractions(multiple_N_tuples, data_file_path, useServerInfluxDB);
 
@@ -65,54 +73,28 @@ public class Main {
             // Iterating through the tests to be done
             for (insertion_no=0; insertion_no<(insertion_types.length); insertion_no++) {
 
-                // Checking if this test is required by the user at the beginning
-                if ((insertion_no!=2 && exec_om) || (insertion_no==2 && exec_mixed)) {
+                // Printing out the test configuration and creating logger
+                String test_configuration = ""+(location_no+1)+(insertion_no+1)+(index_no+1);
+                Logger test_logger = instantiateLogger("test_" + test_configuration);
+                test_logger.info("Test #" + test_configuration
+                        +": from machine \"" +location_types[location_no]+ "\","
+                        +" having \"" +insertion_types[insertion_no]+ "\" insertions at a time"
+                        +" and \""+index_types[index_no]+"\" index set.");
 
-                    // Printing out the test configuration and creating logger
-                    String test_configuration = ""+(location_no+1)+(insertion_no+1)+(index_no+1);
-                    Logger test_logger = instantiateLogger("test_" + test_configuration);
-                    test_logger.info("Test #" + test_configuration
-                            +": from machine \"" +location_types[location_no]+ "\","
-                            +" having \"" +insertion_types[insertion_no]+ "\" insertions at a time"
-                            +" and \""+index_types[index_no]+"\" index set.");
+                // Opening a connection to the InfluxDB database
+                test_logger.info("Connecting to the InfluxDB database...");
+                dbi.createDBConnection();
+                dbi.createDatabase();
 
-                    // Opening a connection to the postgreSQL database
-                    test_logger.info("Connecting to the PostgreSQL database...");
-                    dbi.createDBConnection();
-                    dbi.createDatabase();
+                // ==START OF TEST==
+                System.out.println(test_configuration);
+                dbi.insertTuples(insertion_no, test_logger);
 
-                    // Checking whether concurrent queries are running
-                    String response = "";
-                    if (insertion_no == 2) {
-                        while (response.compareTo("y") != 0) {
-                            test_logger.info("Asking to start the concurrent queries");
-                            System.out.print("Are you at the \"Ready Statement\" on the other script? (y) ");
-                            response = sc.nextLine();
-                        }
-                        test_logger.info("Concurrent queries started");
-                    }
+                // ==END OF TEST==
+                test_logger.info("--End of test #"+test_configuration+"--");
 
-                    // ==START OF TEST==
-                    System.out.println(test_configuration);
-                    dbi.insertTuples(insertion_no, test_logger);
-
-                    // ==END OF TEST==
-                    test_logger.info("--End of test #"+test_configuration+"--");
-
-                    // Checking whether concurrent queries are running
-                    if (insertion_no == 2) {
-                        response = "";
-                        while (response.compareTo("y") != 0) {
-                            test_logger.info("Asking to stop the concurrent queries");
-                            System.out.print("Did you STOP the concurrent queries? (y) ");
-                            response = sc.nextLine();
-                        }
-                        test_logger.info("Concurrent queries stopped");
-                    }
-
-                    // Clean database and close connections
-                    endOfTest();
-                }
+                // Clean database and close connections
+                endOfTest();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -126,13 +108,12 @@ public class Main {
     // Interactions with the user to understand his/her preferences
     public static void talkToUser () throws Exception {
 
-        System.out.println("5 questions for you!");
-        String response = "";
+        System.out.println("4 questions for you!");
+        String response;
         String final_message = "";
         boolean correct_answer = false;
 
         // Understanding where the script is executed
-        response = "";
         while (location_no == -1) {
             System.out.print("1. From which machine are you executing this script?"+
                     " (Type \"ironmaiden\", \"ironlady\" or \"pc\"): ");
@@ -142,7 +123,6 @@ public class Main {
         final_message += "Executing from \""+location_types[location_no]+"\", ";
 
         // Understanding whether the user wants the sever db or the local db
-        response = "";
         correct_answer = false;
         while (!correct_answer) {
             System.out.print("2. Where do you want it to be executed?"
@@ -169,41 +149,11 @@ public class Main {
         }
         final_message += "with index \""+(index_types[index_no])+"\", ";
 
-        // Understanding what the user wants to be executed
-        response = "";
-        correct_answer = false;
-        while (!correct_answer) {
-            System.out.print("4. What do you want to execute?"
-                    +" (Type \"1\" for all 3 tests,"
-                    +" type \"2\" for One and Multiple tuples only,"
-                    +" type \"3\" for Mixed Workload only): ");
-            response = sc.nextLine().replace(" ", "");
-
-            // Understanding what the user wants
-            if (response.compareTo("1") == 0) {
-                exec_om=true;
-                exec_mixed=true;
-                correct_answer=true;
-                final_message += "testing \"all\" configurations, ";
-            }
-            if (response.compareTo("2") == 0) {
-                exec_om=true;
-                correct_answer=true;
-                final_message += "testing \"all but mixed\" configurations, ";
-            }
-            if (response.compareTo("3") == 0) {
-                exec_mixed=true;
-                correct_answer=true;
-                final_message += "testing \"only mixed\" configurations, ";
-            }
-        }
-
         // Understanding which file to run
-        response = "";
         correct_answer = false;
         File f;
         while (!correct_answer) {
-            System.out.print("5. Finally, inside the data folder, what is the " +
+            System.out.print("4. Finally, inside the data folder, what is the " +
                     "data file name? (\"d\" for \""+data_file+"\"): ");
             response = sc.nextLine().replace(" ", "");
 
@@ -237,7 +187,7 @@ public class Main {
             file_name += (location_no+1);
             logs_path += dateAsString+"__"+(location_no+1)+"/";
             File file = new File(logs_path);
-            boolean bool = file.mkdirs();
+            file.mkdirs();
         }
 
         // Instantiating general logger
