@@ -54,10 +54,13 @@ Since I couldn't manage to find a way with the command line, I used IntelliJ:
     -   Execute `mkdir influxdb/standalone_ingestion`;
     -   Execute `mkdir influxdb/standalone_ingestion/resources`;
     -   Execute `mkdir influxdb/standalone_ingestion/logs`;
+    -   Execute `mkdir influxdb/standalone_ingestion/data`;
 -   Send the JAR and the help files from another terminal (not connected through SSH):
     -   Execute `scp standalone/DataIngestionTest.jar sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion`;
     -   Execute `scp resources/server_influxdb_credentials.txt sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion/resources`;
     -   Execute `scp resources/logging.properties sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion/resources`;
+-   Send the data file:
+    -   Execute `scp data/TEMPERATURE_nodup.csv sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion/data`;
 -   Execute the JAR file (use the terminal connected through SSH):
     -   Execute `cd influxdb/standalone_ingestion`;
     -   Execute `nohup java -jar DataIngestionTest.jar [location_name] [l/s] [index_name] [d/file_name] > logs/out.txt &`
