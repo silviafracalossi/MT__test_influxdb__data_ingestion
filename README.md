@@ -18,8 +18,6 @@ The repository is a Maven project. Therefore, the dependency that will automatic
 ## Installation and running the project
 -   Create the folder `data`;
     -   Inside the folder, copy-paste the printers parsed log files, whose timestamp is defined in nanoseconds;
--   Inside the folder `resources`,
-    -   Create a file called `server_influxdb_credentials.txt`, containing the username (first line) and the password (second line) to access the server InfluxDB database;
 -   Run the project
     -   Open IntelliJ IDEA
     -   Compile the maven project
@@ -57,7 +55,6 @@ Since I couldn't manage to find a way with the command line, I used IntelliJ:
     -   Execute `mkdir influxdb/standalone_ingestion/data`;
 -   Send the JAR and the help files from another terminal (not connected through SSH):
     -   Execute `scp standalone/DataIngestionTest.jar sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion`;
-    -   Execute `scp resources/server_influxdb_credentials.txt sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion/resources`;
     -   Execute `scp resources/logging.properties sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion/resources`;
 -   Send the data file:
     -   Execute `scp data/TEMPERATURE_nodup.csv sfracalossi@ironlady.inf.unibz.it:/data/sfracalossi/influxdb/standalone_ingestion/data`;
