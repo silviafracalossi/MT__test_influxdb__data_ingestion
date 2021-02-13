@@ -133,8 +133,8 @@ public class Main {
             // Understanding what the user wants
             if (response.compareTo("l") == 0 || response.compareTo("s") == 0) {
                 correct_answer=true;
-                if (response.compareTo("l") == 0) {
-                    useServerInfluxDB = false;
+                if (response.compareTo("s") == 0) {
+                    useServerInfluxDB = true;
                 }
             }
         }

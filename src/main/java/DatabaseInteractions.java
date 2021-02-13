@@ -19,8 +19,8 @@ public class DatabaseInteractions {
   static final String localURL = "http://localhost:8086";
 
   // Databases Username, Password and Database name
-  static final String username = "root";
-  static final String password = "root";
+  static final String username = "";
+  static final String password = "";
   static final String dbName = "test_table_i";
 
   // Retention policy definition
@@ -152,6 +152,7 @@ public class DatabaseInteractions {
           } catch (InfluxDBException e) {
             System.out.println("Problems with executing the query on the DB");
             logger.severe("Problems with executing query: "+logger_text+"\n");
+            e.printStackTrace();
           }
 
           // Resetting variables for successive tuples
@@ -200,7 +201,6 @@ public class DatabaseInteractions {
 
   // Connecting to the InfluxDB database
   public static boolean createDBConnection() {
-    String pos_complete_url;
     if (useServerInfluxDB) {
       influxDB = InfluxDBFactory.connect(serverURL, username, password);
     } else {
