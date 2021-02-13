@@ -19,8 +19,8 @@ public class DatabaseInteractions {
   static final String localURL = "http://localhost:8086";
 
   // Databases Username, Password and Database name
-  static final String username = "root";
-  static final String password = "root";
+  static final String username = "";
+  static final String password = "";
   static final String dbName = "test_table_i";
 
   // Retention policy definition
